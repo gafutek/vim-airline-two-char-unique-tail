@@ -1,0 +1,15 @@
+# Vim temporary and backup files
+.*.swp
+.*.swo
+*~
+*.un~
+.netrwhist
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Tags files (if you use ctags)
+tags
+tags.lock
+tags.temp

@@ -2,8 +2,17 @@
 "
 " Standalone vim-airline tabline formatter.
 " Derived from vim-airline tabline formatter code (MIT License).
-" The formatting algorithm below is intentionally kept functionally aligned
-" with the previously used standalone file.
+"
+" Optional Nerd Font icons are provided through:
+"   lambdalisue/vim-nerdfont
+"
+" Enable icons in vimrc:
+"   let g:airline_two_char_unique_tail_nerdfont = 1
+"
+" Disable icons:
+"   let g:airline_two_char_unique_tail_nerdfont = 0
+"
+" The default is 0, so vim-nerdfont remains an optional dependency.
 
 scriptencoding utf-8
 
@@ -12,9 +21,56 @@ let s:path_component_length = 2
 
 
 " ------------------------------------------------------------
+" Optional Nerd Font icon
+" ------------------------------------------------------------
+function! s:add_nerdfont_icon(bufnr, display_name) abort
+  if !get(g:, 'airline_two_char_unique_tail_nerdfont', 0)
+    return a:display_name
+  endif
+
+  let l:path = bufname(a:bufnr)
+
+  " Do not add an icon to unnamed or terminal buffers.
+  if empty(l:path) || l:path =~# '^term://'
+    return a:display_name
+  endif
+
+  " nerdfont#find() is an autoload function. Calling it directly
+  " allows Vim to load autoload/nerdfont.vim when required.
+  try
+    let l:icon = nerdfont#find(l:path, 0)
+  catch /^Vim\%((\a\+)\)\=:E117:/
+    " vim-nerdfont is not installed or not available.
+    return a:display_name
+  endtry
+
+  if empty(l:icon)
+    return a:display_name
+  endif
+
+  return l:icon . ' ' . a:display_name
+endfunction
+
+
+" ------------------------------------------------------------
+" Wrap the buffer name after adding the optional icon
+" ------------------------------------------------------------
+function! s:wrap_name(bufnr, display_name) abort
+  let l:display_name = s:add_nerdfont_icon(
+        \ a:bufnr,
+        \ a:display_name
+        \ )
+
+  return airline#extensions#tabline#formatters#default#wrap_name(
+        \ a:bufnr,
+        \ l:display_name
+        \ )
+endfunction
+
+
+" ------------------------------------------------------------
 " Default formatting with 2-character path shortening
 " ------------------------------------------------------------
-
 function! s:default_format(bufnr, buffers) abort
   let l:fnametruncate =
         \ get(g:, 'airline#extensions#tabline#fnametruncate', 0)
@@ -27,7 +83,7 @@ function! s:default_format(bufnr, buffers) abort
   if empty(l:name)
     let l:display_name = '[No Name]'
 
-  elseif l:name =~# 'term://'
+  elseif l:name =~# '^term://'
     " Preserve vim-airline terminal-buffer handling.
     let l:display_name =
           \ substitute(l:name, '\(term://\).*\(.*\)', '\1 \2', '')
@@ -53,10 +109,7 @@ function! s:default_format(bufnr, buffers) abort
     endif
   endif
 
-  return airline#extensions#tabline#formatters#default#wrap_name(
-        \ a:bufnr,
-        \ l:display_name
-        \ )
+  return s:wrap_name(a:bufnr, l:display_name)
 endfunction
 
 
@@ -231,7 +284,7 @@ function! airline#extensions#tabline#formatters#two_char_unique_tail#format(
     call insert(l:buf_name, s:skip_symbol)
   endif
 
-  return airline#extensions#tabline#formatters#default#wrap_name(
+  return s:wrap_name(
         \ a:bufnr,
         \ join(l:buf_name, '/')
         \ )
